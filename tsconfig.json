@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "node20",
+    "target": "ES2025",
+    "lib": ["ES2025"],
+
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

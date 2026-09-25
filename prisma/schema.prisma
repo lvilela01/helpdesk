@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  technical
+  client
+}
+
+model Admins {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  password String
+
+  role UserRole
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+model Coaches {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  password String
+
+  role UserRole
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("coaches")
+}
+
+model Clients {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  password String
+
+  role UserRole @default(client)
+
+  tickets Tickets[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("clients")
+}
+
+model Tickets {
+  id String @id @default(uuid())
+  title String
+  description String
+  category String
+  amount Float
+
+  userId String @map("user_id")
+  user Clients @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("tickets")
+}
