@@ -14,47 +14,36 @@ datasource db {
 
 enum UserRole {
   admin
-  technical
-  client
+  coach
 }
 
-model Admins {
+model User {
   id String @id @default(uuid())
   name String
   email String @unique
-  password String
+  password String?
+  passwordTemporary String?
+  mustChangePassword Boolean @default(false)
 
   role UserRole
+  clients Client[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("admins")
+  @@map("users")
 }
 
-model Coaches {
+model Client {
   id String @id @default(uuid())
   name String
   email String @unique
   password String
 
-  role UserRole
+  userId String @map("user_id")
+  user User @relation(fields: [userId], references: [id])
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("coaches")
-}
-
-model Clients {
-  id String @id @default(uuid())
-  name String
-  email String @unique
-  password String
-
-  role UserRole @default(client)
-
-  tickets Tickets[]
+  tickets Ticket[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -62,15 +51,15 @@ model Clients {
   @@map("clients")
 }
 
-model Tickets {
+model Ticket {
   id String @id @default(uuid())
   title String
   description String
   category String
   amount Float
 
-  userId String @map("user_id")
-  user Clients @relation(fields: [userId], references: [id])
+  clientId String @map("client_id")
+  client Client @relation(fields: [clientId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
