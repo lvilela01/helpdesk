@@ -1,4 +1,4 @@
-import { Request, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { verify } from "jsonwebtoken";
 import { AppError } from "@/utils/AppError";
 import { authConfig } from "@/configs/auth";
@@ -8,7 +8,11 @@ interface Tokenpayload {
   sub: string;
 }
 
-export function ensureAuthenticated(request: Request, next: NextFunction) {
+export function ensureAuthenticated(
+  request: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const authHeader = request.headers.authorization;
 
