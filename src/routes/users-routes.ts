@@ -10,5 +10,7 @@ usersRoutes.use(ensureAuthenticated);
 usersRoutes.use(verifyUserAuthorization(["superadmin"]));
 usersRoutes.post("/", usersController.create);
 usersRoutes.get("/", usersController.index);
+usersRoutes.patch("/:id", usersController.update);
+usersRoutes.delete("/:id", usersController.remove);
 
 export { usersRoutes };

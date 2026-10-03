@@ -10,7 +10,7 @@ interface Tokenpayload {
 
 export function ensureAuthenticated(
   request: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) {
   try {

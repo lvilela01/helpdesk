@@ -42,9 +42,9 @@ export class UsersController {
     });
   }
 
-  async index(req: Request, res: Response) {
+  async index(_req: Request, res: Response) {
     const adminsList = await prisma.user.findMany({
-      where: { role: "admin" },
+      where: { role: { in: ["admin", "superadmin"] } },
       select: {
         id: true,
         name: true,
@@ -57,5 +57,75 @@ export class UsersController {
     });
 
     return res.json(adminsList);
+  }
+
+  async update(req: Request, res: Response) {
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse(req.params);
+
+    const updateSchema = z.object({
+      email: z.email().optional(),
+      password: z.string().optional(),
+      passwordTemporary: z.string().optional(),
+      mustChangePassword: z.boolean().optional(),
+      role: z.enum(["coach", "admin", "superadmin"]).optional(),
+    });
+
+    const { email, password, mustChangePassword, passwordTemporary, role } =
+      updateSchema.parse(req.body);
+
+    const hashedPassword = password ? await hash(password, 12) : undefined;
+
+    const data = {
+      ...(email !== undefined && { email }),
+      ...(password !== undefined && { password: hashedPassword }),
+      ...(mustChangePassword !== undefined && { mustChangePassword }),
+      ...(role !== undefined && { role }),
+      ...(passwordTemporary !== undefined && { passwordTemporary }),
+    };
+
+    await prisma.user.update({
+      where: { id },
+      data,
+    });
+
+    return res.json({ message: "Updated!" });
+  }
+
+  async remove(req: Request, res: Response) {
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse(req.params);
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { _count: { select: { clients: true } } },
+    });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (req.user?.id === id) {
+      throw new AppError("You cannot delete your own user", 400);
+    }
+
+    if (user._count.clients > 0) {
+      throw new AppError(
+        "This user cannot be deleted because it has associated clients",
+        400,
+      );
+    }
+
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    return res.status(204).send();
   }
 }
