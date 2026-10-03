@@ -4,7 +4,7 @@ import { AppError } from "@/utils/AppError";
 import { prisma } from "@/database/prisma";
 import { hash } from "bcrypt";
 
-export class UsersController {
+export class AdminsController {
   async create(req: Request, res: Response) {
     const bodySchema = z.object({
       name: z.string().trim().min(3),

@@ -23,11 +23,13 @@ export class SessionsController {
       throw new AppError("Email or password invalid!", 401);
     }
 
-    if (!user.password) {
+    const storedPassword = user.password ?? user.passwordTemporary;
+
+    if (!storedPassword) {
       throw new AppError("Email or password invalid!", 401);
     }
 
-    const passwordMatched = await compare(password, user.password);
+    const passwordMatched = await compare(password, storedPassword);
 
     if (!passwordMatched) {
       throw new AppError("Email or password invalid!", 401);
@@ -47,6 +49,7 @@ export class SessionsController {
         name: user.name,
         email: user.email,
         role: user.role,
+        mustChangePassword: user.mustChangePassword,
       },
     });
   }
