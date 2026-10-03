@@ -69,4 +69,54 @@ export class CoachController {
 
     return res.json({ message: "Password updated successfully!" });
   }
+
+  async index(_req: Request, res: Response) {
+    const listCoach = await prisma.user.findMany({
+      where: { role: "coach" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        mustChangePassword: true,
+      },
+    });
+
+    return res.json(listCoach);
+  }
+
+  async update(req: Request, res: Response) {
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse(req.params);
+
+    const updateSchema = z.object({
+      email: z.email().optional(),
+      passwordTemporary: z.string().trim().min(8).optional(),
+    });
+
+    const { email, passwordTemporary } = updateSchema.parse(req.body);
+
+    if (email === undefined && passwordTemporary === undefined) {
+      throw new AppError("At least one field must be provided", 400);
+    }
+
+    const data = {
+      ...(email !== undefined && { email }),
+      ...(passwordTemporary !== undefined && {
+        passwordTemporary: await hash(passwordTemporary, 12),
+        password: null,
+        mustChangePassword: true,
+      }),
+    };
+
+    await prisma.user.update({
+      where: { id },
+      data,
+    });
+
+    return res.json({ message: "Updated!" });
+  }
 }

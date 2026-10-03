@@ -23,7 +23,9 @@ export class SessionsController {
       throw new AppError("Email or password invalid!", 401);
     }
 
-    const storedPassword = user.password ?? user.passwordTemporary;
+    const storedPassword = user.mustChangePassword
+      ? user.passwordTemporary
+      : user.password;
 
     if (!storedPassword) {
       throw new AppError("Email or password invalid!", 401);

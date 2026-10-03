@@ -15,4 +15,8 @@ coachRoutes.post(
 );
 coachRoutes.patch("/password", coachController.changePassword);
 
+coachRoutes.use(verifyUserAuthorization(["superadmin", "admin"]));
+coachRoutes.get("/", coachController.index);
+coachRoutes.patch("/:id", coachController.update);
+
 export { coachRoutes };
