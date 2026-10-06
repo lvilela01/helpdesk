@@ -27,6 +27,8 @@ model User {
   mustChangePassword Boolean @default(false)
 
   role UserRole
+  availableHours String[] @default([]) @map("available_hours")
+
   clients Client[]
 
   createdAt DateTime @default(now()) @map("created_at")

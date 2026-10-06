@@ -3,6 +3,7 @@ import { AppError } from "@/utils/AppError";
 import { hash } from "bcrypt";
 import { Request, Response } from "express";
 import z from "zod";
+import { defaultHours, hourSchema } from "@/utils/defaultHours";
 
 export class CoachController {
   async create(req: Request, res: Response) {
@@ -10,9 +11,12 @@ export class CoachController {
       name: z.string().min(3).trim(),
       email: z.email().trim(),
       passwordTemporary: z.string().min(8),
+      availableHours: z.array(hourSchema).default(defaultHours),
     });
 
-    const { name, email, passwordTemporary } = bodySchema.parse(req.body);
+    const { name, email, passwordTemporary, availableHours } = bodySchema.parse(
+      req.body,
+    );
 
     const userWithSameEmail = await prisma.user.findUnique({
       where: { email },
@@ -30,6 +34,7 @@ export class CoachController {
       passwordTemporary: hashedPassword,
       role: "coach" as const,
       mustChangePassword: true,
+      availableHours,
     };
 
     const coach = await prisma.user.create({
@@ -42,6 +47,7 @@ export class CoachController {
       email: coach.email,
       role: coach.role,
       mustChangePassword: coach.mustChangePassword,
+      availableHours: coach.availableHours,
     });
   }
 
@@ -78,6 +84,7 @@ export class CoachController {
         name: true,
         email: true,
         role: true,
+        availableHours: true,
         mustChangePassword: true,
       },
     });
@@ -95,11 +102,18 @@ export class CoachController {
     const updateSchema = z.object({
       email: z.email().optional(),
       passwordTemporary: z.string().trim().min(8).optional(),
+      availableHours: z.array(hourSchema).optional(),
     });
 
-    const { email, passwordTemporary } = updateSchema.parse(req.body);
+    const { email, passwordTemporary, availableHours } = updateSchema.parse(
+      req.body,
+    );
 
-    if (email === undefined && passwordTemporary === undefined) {
+    if (
+      email === undefined &&
+      passwordTemporary === undefined &&
+      availableHours === undefined
+    ) {
       throw new AppError("At least one field must be provided", 400);
     }
 
@@ -110,6 +124,7 @@ export class CoachController {
         password: null,
         mustChangePassword: true,
       }),
+      ...(availableHours !== undefined && { availableHours }),
     };
 
     await prisma.user.update({

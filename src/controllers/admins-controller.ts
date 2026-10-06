@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppError } from "@/utils/AppError";
 import { prisma } from "@/database/prisma";
 import { hash } from "bcrypt";
+import { defaultHours, hourSchema } from "@/utils/defaultHours";
 
 export class AdminsController {
   async create(req: Request, res: Response) {
@@ -11,9 +12,12 @@ export class AdminsController {
       email: z.email().trim(),
       password: z.string().min(8).trim(),
       role: z.enum(["admin", "coach"]),
+      availableHours: z.array(hourSchema).default(defaultHours).optional(),
     });
 
-    const { name, email, password, role } = bodySchema.parse(req.body);
+    const { name, email, password, role, availableHours } = bodySchema.parse(
+      req.body,
+    );
 
     const userWithSameEmail = await prisma.user.findUnique({
       where: { email },
@@ -31,6 +35,7 @@ export class AdminsController {
         email,
         password: hashedPassword,
         role,
+        availableHours,
       },
     });
 
@@ -39,6 +44,7 @@ export class AdminsController {
       name: user.name,
       email: user.email,
       role: user.role,
+      availableHours: user.availableHours,
     });
   }
 
@@ -50,6 +56,7 @@ export class AdminsController {
         name: true,
         email: true,
         role: true,
+        availableHours: true,
         mustChangePassword: true,
         createdAt: true,
         updatedAt: true,
@@ -72,10 +79,17 @@ export class AdminsController {
       passwordTemporary: z.string().optional(),
       mustChangePassword: z.boolean().optional(),
       role: z.enum(["coach", "admin", "superadmin"]).optional(),
+      availableHours: z.array(hourSchema).optional(),
     });
 
-    const { email, password, mustChangePassword, passwordTemporary, role } =
-      updateSchema.parse(req.body);
+    const {
+      email,
+      password,
+      mustChangePassword,
+      passwordTemporary,
+      role,
+      availableHours,
+    } = updateSchema.parse(req.body);
 
     const hashedPassword = password ? await hash(password, 12) : undefined;
 
@@ -85,6 +99,7 @@ export class AdminsController {
       ...(mustChangePassword !== undefined && { mustChangePassword }),
       ...(role !== undefined && { role }),
       ...(passwordTemporary !== undefined && { passwordTemporary }),
+      ...(availableHours !== undefined && { availableHours }),
     };
 
     await prisma.user.update({
