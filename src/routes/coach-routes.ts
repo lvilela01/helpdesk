@@ -13,7 +13,6 @@ coachRoutes.post(
   verifyUserAuthorization(["superadmin", "admin"]),
   coachController.create,
 );
-coachRoutes.patch("/password", coachController.changePassword);
 
 coachRoutes.use(verifyUserAuthorization(["superadmin", "admin"]));
 coachRoutes.get("/", coachController.index);

@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "@/utils/AppError";
+import { UserRole } from "../../generated/prisma/enums";
 
-export function verifyUserAuthorization(role: string[]) {
+export function verifyUserAuthorization(role: UserRole[]) {
   return (request: Request, _response: Response, next: NextFunction) => {
     if (!request.user) {
       throw new AppError("Unauthorized", 401);

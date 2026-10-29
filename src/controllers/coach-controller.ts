@@ -18,7 +18,7 @@ export class CoachController {
       req.body,
     );
 
-    const userWithSameEmail = await prisma.user.findUnique({
+    const userWithSameEmail = await prisma.account.findUnique({
       where: { email },
     });
 
@@ -28,64 +28,44 @@ export class CoachController {
 
     const hashedPassword = await hash(passwordTemporary, 12);
 
-    const data = {
-      name,
-      email,
-      passwordTemporary: hashedPassword,
-      role: "coach" as const,
-      mustChangePassword: true,
-      availableHours,
-    };
-
-    const coach = await prisma.user.create({
-      data,
-    });
-
-    return res.status(201).json({
-      id: coach.id,
-      name: coach.name,
-      email: coach.email,
-      role: coach.role,
-      mustChangePassword: coach.mustChangePassword,
-      availableHours: coach.availableHours,
-    });
-  }
-
-  async changePassword(req: Request, res: Response) {
-    if (!req.user) {
-      throw new AppError("Unauthorized", 401);
-    }
-
-    const { password } = z
-      .object({
-        password: z.string().trim().min(8),
-      })
-      .parse(req.body);
-
-    const newPasswordHash = await hash(password, 12);
-
-    await prisma.user.update({
-      where: { id: req.user.id },
+    const account = await prisma.account.create({
       data: {
-        password: newPasswordHash,
-        passwordTemporary: null,
-        mustChangePassword: false,
+        email,
+        passwordTemporary: hashedPassword,
+        role: "coach" as const,
+        mustChangePassword: true,
+        user: {
+          create: { name, availableHours },
+        },
+      },
+      include: {
+        user: true,
       },
     });
 
-    return res.json({ message: "Password updated successfully!" });
+    return res.status(201).json({
+      id: account.id,
+      email: account.email,
+      role: account.role,
+      mustChangePassword: account.mustChangePassword,
+    });
   }
 
   async index(_req: Request, res: Response) {
     const listCoach = await prisma.user.findMany({
-      where: { role: "coach" },
+      where: { account: { role: "coach" } },
       select: {
         id: true,
         name: true,
-        email: true,
-        role: true,
         availableHours: true,
-        mustChangePassword: true,
+        account: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            mustChangePassword: true,
+          },
+        },
       },
     });
 
@@ -99,39 +79,36 @@ export class CoachController {
       })
       .parse(req.params);
 
-    const updateSchema = z.object({
-      email: z.email().optional(),
-      passwordTemporary: z.string().trim().min(8).optional(),
-      availableHours: z.array(hourSchema).optional(),
-    });
+    const { availableHours } = z
+      .object({
+        availableHours: z.array(hourSchema).optional(),
+      })
+      .parse(req.body);
 
-    const { email, passwordTemporary, availableHours } = updateSchema.parse(
-      req.body,
-    );
-
-    if (
-      email === undefined &&
-      passwordTemporary === undefined &&
-      availableHours === undefined
-    ) {
+    if (availableHours === undefined) {
       throw new AppError("At least one field must be provided", 400);
     }
 
-    const data = {
-      ...(email !== undefined && { email }),
-      ...(passwordTemporary !== undefined && {
-        passwordTemporary: await hash(passwordTemporary, 12),
-        password: null,
-        mustChangePassword: true,
-      }),
-      ...(availableHours !== undefined && { availableHours }),
-    };
-
-    await prisma.user.update({
-      where: { id },
-      data,
+    const user = await prisma.user.findUnique({
+      where: { id, account: { role: "coach" } },
+      select: {
+        accountId: true,
+      },
     });
 
-    return res.json({ message: "Updated!" });
+    if (!user) {
+      throw new AppError("Coach not found", 404);
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id },
+        data: {
+          ...(availableHours !== undefined && { availableHours }),
+        },
+      }),
+    ]);
+
+    return res.json({ message: "Hours updated!" });
   }
 }

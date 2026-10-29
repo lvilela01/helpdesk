@@ -13,16 +13,20 @@ async function main() {
 
   const password = await hash(seedEnv.BOOTSTRAP_ADMIN_PASSWORD, 12);
 
-  await prisma.user.upsert({
+  await prisma.account.upsert({
     where: {
       email: seedEnv.BOOTSTRAP_ADMIN_EMAIL,
     },
     update: {},
     create: {
-      name: "Admin",
       email: seedEnv.BOOTSTRAP_ADMIN_EMAIL,
       password,
       role: "superadmin",
+      user: {
+        create: {
+          name: "Admin"
+        }
+      }
     },
   });
 }

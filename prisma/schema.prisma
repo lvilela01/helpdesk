@@ -16,19 +16,35 @@ enum UserRole {
   superadmin
   admin
   coach
+  client
+}
+
+model Account {
+  id String @id @default(uuid())
+  email String @unique
+  password String?
+  passwordTemporary String?
+  mustChangePassword Boolean @default(false)
+  role UserRole
+  avatar String?
+
+  user User?
+  client Client?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("accounts")
 }
 
 model User {
   id String @id @default(uuid())
   name String
-  email String @unique
-  password String?
-  passwordTemporary String?
-  mustChangePassword Boolean @default(false)
+  accountId String @unique @map("account_id")
 
-  role UserRole
+  account Account @relation(fields: [accountId], references: [id])
+
   availableHours String[] @default([]) @map("available_hours")
-
   clients Client[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -40,11 +56,12 @@ model User {
 model Client {
   id String @id @default(uuid())
   name String
-  email String @unique
-  password String
+  accountId String @unique @map("account_id")
 
-  userId String @map("user_id")
-  user User @relation(fields: [userId], references: [id])
+  account Account @relation(fields: [accountId], references: [id])
+
+  userId String? @map("user_id")
+  user User? @relation(fields: [userId], references: [id])
 
   tickets Ticket[]
 

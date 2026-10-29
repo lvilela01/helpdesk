@@ -1,25 +1,22 @@
 import { Request, Response } from "express";
-import { z } from "zod";
+import { uuid, z } from "zod";
 import { AppError } from "@/utils/AppError";
 import { prisma } from "@/database/prisma";
 import { hash } from "bcrypt";
-import { defaultHours, hourSchema } from "@/utils/defaultHours";
+import { hourSchema } from "@/utils/defaultHours";
 
 export class AdminsController {
   async create(req: Request, res: Response) {
     const bodySchema = z.object({
-      name: z.string().trim().min(3),
+      name: z.string().min(3),
       email: z.email().trim(),
       password: z.string().min(8).trim(),
-      role: z.enum(["admin", "coach"]),
-      availableHours: z.array(hourSchema).default(defaultHours).optional(),
+      role: z.enum(["admin"]),
     });
 
-    const { name, email, password, role, availableHours } = bodySchema.parse(
-      req.body,
-    );
+    const { name, email, password, role } = bodySchema.parse(req.body);
 
-    const userWithSameEmail = await prisma.user.findUnique({
+    const userWithSameEmail = await prisma.account.findUnique({
       where: { email },
     });
 
@@ -29,37 +26,43 @@ export class AdminsController {
 
     const hashedPassword = await hash(password, 12);
 
-    const user = await prisma.user.create({
+    const account = await prisma.account.create({
       data: {
-        name,
         email,
         password: hashedPassword,
         role,
-        availableHours,
+        user: {
+          create: { name },
+        },
+      },
+      include: {
+        user: true,
       },
     });
 
+    if (!account.user) {
+      throw new AppError("User profile was not created for this account.", 500);
+    }
+
     return res.status(201).json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      availableHours: user.availableHours,
+      id: account.id,
+      name: account.user.name,
+      email: account.email,
+      role: account.role,
     });
   }
 
   async index(_req: Request, res: Response) {
-    const adminsList = await prisma.user.findMany({
+    const adminsList = await prisma.account.findMany({
       where: { role: { in: ["admin", "superadmin"] } },
       select: {
         id: true,
-        name: true,
         email: true,
         role: true,
-        availableHours: true,
         mustChangePassword: true,
-        createdAt: true,
-        updatedAt: true,
+        user: {
+          select: { name: true, availableHours: true },
+        },
       },
     });
 
@@ -73,41 +76,37 @@ export class AdminsController {
       })
       .parse(req.params);
 
-    const updateSchema = z.object({
-      email: z.email().optional(),
-      password: z.string().optional(),
-      passwordTemporary: z.string().optional(),
-      mustChangePassword: z.boolean().optional(),
-      role: z.enum(["coach", "admin", "superadmin"]).optional(),
-      availableHours: z.array(hourSchema).optional(),
+    const { availableHours } = z
+      .object({
+        availableHours: z.array(hourSchema),
+      })
+      .parse(req.body);
+
+    const account = await prisma.account.findUnique({
+      where: { id },
+      select: {
+        user: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
 
-    const {
-      email,
-      password,
-      mustChangePassword,
-      passwordTemporary,
-      role,
-      availableHours,
-    } = updateSchema.parse(req.body);
+    if (!account) {
+      throw new AppError("User not found!", 404);
+    }
 
-    const hashedPassword = password ? await hash(password, 12) : undefined;
-
-    const data = {
-      ...(email !== undefined && { email }),
-      ...(password !== undefined && { password: hashedPassword }),
-      ...(mustChangePassword !== undefined && { mustChangePassword }),
-      ...(role !== undefined && { role }),
-      ...(passwordTemporary !== undefined && { passwordTemporary }),
-      ...(availableHours !== undefined && { availableHours }),
-    };
+    if (!account.user) {
+      throw new AppError("User profile not found!", 404);
+    }
 
     await prisma.user.update({
-      where: { id },
-      data,
+      where: { id: account.user.id },
+      data: { availableHours },
     });
 
-    return res.json({ message: "Updated!" });
+    return res.json({ message: "Available hours updated!" });
   }
 
   async remove(req: Request, res: Response) {
@@ -117,12 +116,12 @@ export class AdminsController {
       })
       .parse(req.params);
 
-    const user = await prisma.user.findUnique({
+    const account = await prisma.account.findUnique({
       where: { id },
-      select: { _count: { select: { clients: true } } },
+      select: { user: { select: { _count: { select: { clients: true } } } } },
     });
 
-    if (!user) {
+    if (!account) {
       throw new AppError("User not found", 404);
     }
 
@@ -130,17 +129,96 @@ export class AdminsController {
       throw new AppError("You cannot delete your own user", 400);
     }
 
-    if (user._count.clients > 0) {
+    if ((account.user?._count.clients ?? 0) > 0) {
       throw new AppError(
         "This user cannot be deleted because it has associated clients",
         400,
       );
     }
 
-    await prisma.user.delete({
-      where: { id },
+    if (!account.user) {
+      throw new AppError("User profile not found!", 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.delete({
+        where: { accountId: id },
+      });
+
+      await tx.account.delete({
+        where: { id },
+      });
     });
 
     return res.status(204).send();
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    const { id } = z
+      .object({
+        id: uuid(),
+      })
+      .parse(req.params);
+
+    const { newPassword } = z
+      .object({
+        newPassword: z.string().trim().min(8),
+      })
+      .parse(req.body);
+
+    if (!req.user) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const targetAccount = await prisma.account.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+
+    if (!targetAccount) {
+      throw new AppError("Account not found", 404);
+    }
+
+    if (req.user.id === targetAccount.id) {
+      throw new AppError(
+        "Use the regular password change endpoint for your own account",
+        400,
+      );
+    }
+
+    if (
+      req.user.role === "admin" &&
+      !["coach", "client"].includes(targetAccount.role)
+    ) {
+      throw new AppError(
+        "Admins cannot reset passwords for admin or superadmin accounts",
+        403,
+      );
+    }
+
+    const hashedPassword = await hash(newPassword, 12);
+
+    const data =
+      targetAccount.role === "coach"
+        ? {
+            password: null,
+            passwordTemporary: hashedPassword,
+            mustChangePassword: true,
+          }
+        : {
+            password: hashedPassword,
+            passwordTemporary: null,
+            mustChangePassword: false,
+          };
+
+    await prisma.account.update({
+      where: { id: targetAccount.id },
+      data,
+    });
+
+    return res.json("Password updated successfully!");
   }
 }

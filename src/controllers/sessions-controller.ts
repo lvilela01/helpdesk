@@ -10,22 +10,27 @@ export class SessionsController {
   async create(req: Request, res: Response) {
     const bodySchema = z.object({
       email: z.email().trim(),
-      password: z.string(),
+      password: z.string().trim(),
     });
 
     const { email, password } = bodySchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({
+    const account = await prisma.account.findUnique({
       where: { email },
+      include: {
+        user: { select: { name: true } },
+        client: { select: { name: true } },
+      },
     });
 
-    if (!user) {
+    if (!account) {
       throw new AppError("Email or password invalid!", 401);
     }
 
-    const storedPassword = user.mustChangePassword
-      ? user.passwordTemporary
-      : user.password;
+    const storedPassword =
+      account.role === "coach" && account.mustChangePassword
+        ? account.passwordTemporary
+        : account.password;
 
     if (!storedPassword) {
       throw new AppError("Email or password invalid!", 401);
@@ -39,19 +44,36 @@ export class SessionsController {
 
     const { secret, expiresIn } = authConfig.jwt;
 
-    const token = sign({ role: user.role }, secret, {
-      subject: user.id,
+    const profile = account.user ?? account.client;
+
+    if (!profile) {
+      throw new AppError("Account profile not found", 500);
+    }
+
+    const hasUser = Boolean(account.user);
+    const hasClient = Boolean(account.client);
+
+    const validProfile =
+      account.role === "client" ? hasClient && !hasUser : hasUser && !hasClient;
+
+    if (!validProfile) {
+      throw new AppError("Invalid account profile!", 500);
+    }
+
+    const token = sign({ role: account.role }, secret, {
+      subject: account.id,
       expiresIn,
     });
 
     return res.json({
       token,
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        mustChangePassword: user.mustChangePassword,
+        id: account.id,
+        name: profile.name,
+        email: account.email,
+        role: account.role,
+        mustChangePassword:
+          account.role === "coach" && account.mustChangePassword,
       },
     });
   }

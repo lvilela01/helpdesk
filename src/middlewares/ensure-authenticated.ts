@@ -5,7 +5,6 @@ import { authConfig } from "@/configs/auth";
 import { prisma } from "@/database/prisma";
 
 interface Tokenpayload {
-  role: string;
   sub: string;
 }
 
@@ -30,29 +29,44 @@ export async function ensureAuthenticated(
 
   try {
     payload = verify(token, authConfig.jwt.secret) as Tokenpayload;
+
+    if (
+      typeof payload !== "object" ||
+      payload === null ||
+      typeof payload.sub !== "string"
+    ) {
+      throw new AppError("Invalid JWT token", 401);
+    }
   } catch (error) {
     throw new AppError("Invalid JWT token", 401);
   }
 
-  const user = await prisma.user.findUnique({
+  const account = await prisma.account.findUnique({
     where: {
       id: payload.sub,
     },
     select: {
       id: true,
       role: true,
-      mustChangePassword: true,
+      user: { select: { name: true } },
+      client: { select: { name: true } },
     },
   });
 
-  if (!user) {
-    throw new AppError("User not found", 401);
+  if (!account) {
+    throw new AppError("Account not found", 401);
+  }
+
+  const profile = account.user ?? account.client;
+
+  if (!profile) {
+    throw new AppError("Account profile not found", 500);
   }
 
   req.user = {
-    id: user.id,
-    role: user.role,
-    mustChangePassword: user.mustChangePassword,
+    id: account.id,
+    role: account.role,
+    name: profile.name,
   };
 
   return next();
