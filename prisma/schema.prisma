@@ -19,6 +19,13 @@ enum UserRole {
   client
 }
 
+enum ServiceCategory {
+  network
+  hardware
+  software
+  account
+}
+
 model Account {
   id String @id @default(uuid())
   email String @unique
@@ -71,12 +78,23 @@ model Client {
   @@map("clients")
 }
 
+model Service {
+  id String @id @default(uuid())
+  name String
+  category ServiceCategory @unique
+  amount Decimal @db.Decimal(10, 2)
+  tickets Ticket[]
+}
+
 model Ticket {
   id String @id @default(uuid())
   title String
   description String
-  category String
-  amount Float
+  amount Decimal @db.Decimal(10, 2)
+  attachment String?
+
+  serviceId String
+  service Service @relation(fields: [serviceId], references: [id])
 
   clientId String @map("client_id")
   client Client @relation(fields: [clientId], references: [id])

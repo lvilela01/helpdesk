@@ -24,10 +24,36 @@ async function main() {
       role: "superadmin",
       user: {
         create: {
-          name: "Admin"
-        }
-      }
+          name: "Admin",
+        },
+      },
     },
+  });
+
+  await prisma.service.createMany({
+    data: [
+      {
+        name: "Suporte de rede",
+        category: "network",
+        amount: 200,
+      },
+      {
+        name: "Suporte de hardware",
+        category: "hardware",
+        amount: 250,
+      },
+      {
+        name: "Suporte de software",
+        category: "software",
+        amount: 150,
+      },
+      {
+        name: "Suporte de conta",
+        category: "account",
+        amount: 100,
+      },
+    ],
+    skipDuplicates: true,
   });
 }
 

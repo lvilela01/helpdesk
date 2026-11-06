@@ -3,3 +3,8 @@ node_modules
 dist
 /generated/prisma
 npm-debug.log*
+tmp/*
+!tmp/.gitkeep
+!tmp/uploads/
+tmp/uploads/*
+!tmp/uploads/.gitkeep

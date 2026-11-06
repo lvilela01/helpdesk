@@ -11,7 +11,7 @@ export class AdminsController {
       name: z.string().min(3),
       email: z.email().trim(),
       password: z.string().min(8).trim(),
-      role: z.enum(["admin"]),
+      role: z.enum(["admin", "coach"]),
     });
 
     const { name, email, password, role } = bodySchema.parse(req.body);

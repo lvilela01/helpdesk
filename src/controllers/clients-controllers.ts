@@ -4,7 +4,7 @@ import { prisma } from "@/database/prisma";
 import { AppError } from "@/utils/AppError";
 import { hash } from "bcrypt";
 
-export class ClientController {
+export class ClientsController {
   async create(req: Request, res: Response) {
     const bodySchema = z
       .object({
@@ -37,7 +37,7 @@ export class ClientController {
         mustChangePassword: false,
         role: "client",
         client: {
-          create: { name, avatar: null },
+          create: { name },
         },
       },
       include: { client: { select: { id: true, name: true } } },

@@ -10,11 +10,6 @@ const upload = multer(uploadConfig.MULTER);
 
 uploadsRoutes.use(ensureAuthenticated);
 uploadsRoutes.post(
-  "/ticket",
-  upload.single("file"),
-  uploadsController.createTicket,
-);
-uploadsRoutes.post(
   "/avatar",
   upload.single("file"),
   uploadsController.createAvatar,
