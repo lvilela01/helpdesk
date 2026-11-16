@@ -17,5 +17,6 @@ coachRoutes.post(
 coachRoutes.use(verifyUserAuthorization(["superadmin", "admin"]));
 coachRoutes.get("/", coachController.index);
 coachRoutes.patch("/:id", coachController.update);
+coachRoutes.get("/:id/tickets", coachController.ticketsCoach)
 
 export { coachRoutes };

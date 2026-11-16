@@ -111,4 +111,41 @@ export class CoachController {
 
     return res.json({ message: "Hours updated!" });
   }
+
+  async ticketsCoach(req: Request, res: Response) {
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse(req.params);
+
+    const coach = await prisma.user.findFirst({
+      where: { id, account: { role: "coach" } },
+      select: { name: true },
+    });
+
+    if (!coach) {
+      throw new AppError("Coach not found", 404);
+    }
+
+    const listTicketsCoach = await prisma.ticket.findMany({
+      where: { coach: coach.name, status: { in: ["open", "being_served"] } },
+      select: {
+        title: true,
+        description: true,
+        amount: true,
+        status: true,
+        service: {
+          select: {
+            name: true,
+            category: true,
+          },
+        },
+        client: { select: { name: true } },
+        updatedAt: true,
+      },
+    });
+
+    return res.json(listTicketsCoach);
+  }
 }

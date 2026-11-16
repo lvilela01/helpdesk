@@ -6,6 +6,7 @@ import { uploadsRoutes } from "./uploads-routes";
 import { clientsRoutes } from "./clients-routes";
 import { changePasswordRoutes } from "./changePassword-routes";
 import { ticketsRoutes } from "./tickets-routes";
+import { servicesRoutes } from "./services-routes";
 
 const routes = Router();
 routes.use("/users", adminsRoutes);
@@ -15,5 +16,6 @@ routes.use("/uploads", uploadsRoutes);
 routes.use("/clients", clientsRoutes);
 routes.use("/account/password", changePasswordRoutes);
 routes.use("/tickets", ticketsRoutes)
+routes.use("/services", servicesRoutes)
 
 export { routes };

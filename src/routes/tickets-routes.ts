@@ -9,7 +9,12 @@ const ticketsRoutes = Router()
 const ticketsController = new TicketsController()
 const upload = multer(uploadConfig.MULTER)
 
-ticketsRoutes.use(ensureAuthenticated)
-ticketsRoutes.post("/", verifyUserAuthorization(["client"]), upload.single("file"), ticketsController.create)
+ticketsRoutes.post("/", ensureAuthenticated, verifyUserAuthorization(["client"]), upload.single("file"), ticketsController.create)
+
+ticketsRoutes.post("/:id/additional-services", ensureAuthenticated, verifyUserAuthorization(["coach"]), ticketsController.additionalService)
+
+ticketsRoutes.get("/", ensureAuthenticated, verifyUserAuthorization(["superadmin", "admin"]), ticketsController.index)
+
+ticketsRoutes.get("/:id/list", ensureAuthenticated, verifyUserAuthorization(["coach"]), ticketsController.ticketsCoach)
 
 export { ticketsRoutes }

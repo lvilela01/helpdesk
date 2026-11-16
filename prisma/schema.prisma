@@ -19,11 +19,10 @@ enum UserRole {
   client
 }
 
-enum ServiceCategory {
-  network
-  hardware
-  software
-  account
+enum TicketStatus {
+  open
+  being_served
+  closed
 }
 
 model Account {
@@ -80,10 +79,13 @@ model Client {
 
 model Service {
   id String @id @default(uuid())
-  name String
-  category ServiceCategory @unique
+  name String @unique
+  category String @unique
   amount Decimal @db.Decimal(10, 2)
+  active Boolean @default(true)
   tickets Ticket[]
+
+  additionalTickets TicketAdditionalService[]
 }
 
 model Ticket {
@@ -92,6 +94,8 @@ model Ticket {
   description String
   amount Decimal @db.Decimal(10, 2)
   attachment String?
+  coach String
+  status TicketStatus @default(open)
 
   serviceId String
   service Service @relation(fields: [serviceId], references: [id])
@@ -99,8 +103,26 @@ model Ticket {
   clientId String @map("client_id")
   client Client @relation(fields: [clientId], references: [id])
 
+  additionalServices TicketAdditionalService[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("tickets")
+}
+
+model TicketAdditionalService {
+  id String @id @default(uuid())
+  amount Decimal @db.Decimal(10,2)
+  quantity Int @default(1)
+
+  ticketId String @map("ticket_id")
+  serviceId String @map("service_id")
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([ticketId, serviceId])
+  @@map("ticket_additional_service")
 }
